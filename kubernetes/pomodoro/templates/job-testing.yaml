@@ -1,0 +1,49 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  creationTimestamp: null
+  labels:
+    io.kompose.service: {{ .Chart.Name }}
+  name: testing-{{ .Chart.Name }}
+spec:
+  completions: 1    
+  activeDeadlineSeconds: 1200
+  backoffLimit: 0
+  manualSelector: true
+  selector:
+    matchLabels:
+      io.kompose.service: {{ .Chart.Name }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      creationTimestamp: null
+      labels:
+        io.kompose.service: {{ .Chart.Name }}
+    spec:
+      volumes:
+        - hostPath:
+            path: '/private/var/www/rebuy'
+          name: {{ .Chart.Name }}-hostpath0
+      restartPolicy: Never
+      containers:
+        - name: pest
+          image: {{ .Chart.Name }}
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+          - >
+            /bin/sh -c
+            ./vendor/bin/pest;
+          workingDir: /var/www
+          resources:
+            limits:
+              cpu: 200m
+              memory: "200Mi"
+            requests:
+              cpu: 200m
+              memory: "200Mi"
+          volumeMounts:
+            - mountPath: /var/www
+              name: {{ .Chart.Name }}-hostpath0

@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    io.kompose.service: {{ .Chart.Name }}
+  name: {{ .Chart.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: {{ .Chart.Name }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      creationTimestamp: null
+      labels:
+        io.kompose.service: {{ .Chart.Name }}
+    spec:
+      volumes:
+        - hostPath:
+            path: '/private/var/www/rebuy'
+          name: {{ .Chart.Name }}-hostpath0
+      initContainers:
+        - name: {{ .Chart.Name }}-npm
+          image: node:alpine
+          command: ["/bin/sh", "-c"]
+          args:
+          - >
+            /bin/sh -c
+            echo "Installing Dependencies -------------------------------->";
+            npm install;
+          workingDir: /var/www
+          envFrom:
+            - configMapRef:
+                name: {{ .Chart.Name }}-configmap
+          resources:
+            limits:
+              cpu: 200m
+              memory: "200Mi"
+            requests:
+              cpu: 200m
+              memory: "200Mi"
+          volumeMounts:
+            - mountPath: /var/www
+              name: {{ .Chart.Name }}-hostpath0
+        - name: {{ .Chart.Name }}-composer
+          image: composer:latest
+          command: ["/bin/sh", "-c"]
+          args:
+          - >
+            /bin/sh -c
+            echo "Installing Dependencies -------------------------------->";
+            composer install --no-scripts --no-progress --ignore-platform-reqs;
+            ./vendor/bin/rr get-binary;
+          workingDir: /var/www
+          envFrom:
+            - configMapRef:
+                name: {{ .Chart.Name }}-configmap
+          resources:
+            limits:
+              cpu: 200m
+              memory: "200Mi"
+            requests:
+              cpu: 200m
+              memory: "200Mi"
+          volumeMounts:
+            - mountPath: /var/www
+              name: {{ .Chart.Name }}-hostpath0
+      containers:
+        - name: octane
+          image: {{ .Chart.Name }}
+          imagePullPolicy: IfNotPresent
+          args: ["php", "artisan", "octane:start","--server=roadrunner","--rr-config=./.rr.yaml"]
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: {{ .Chart.Name }}-configmap
+          resources:
+            limits:
+              cpu: 400m
+              memory: 400Mi
+            requests:
+              cpu: 400m
+              memory: 400Mi
+          volumeMounts:
+            - mountPath: /var/www
+              name: {{ .Chart.Name }}-hostpath0
+          workingDir: /var/www
+      restartPolicy: Always
+status: {}

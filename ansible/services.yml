@@ -1,0 +1,30 @@
+---
+- name: Install services related to spend-k8
+  hosts: localhost
+  # become: yes
+  tasks:
+    - debug:
+        msg: "Executing task to install packages via brew"
+
+    - name: Install packages via brew
+      homebrew:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - docker
+        - helm
+        - kubectl
+        - tilt
+        - k9s
+
+    - debug:
+        msg: "Completed task to install packages via brew"
+
+    - debug:
+        msg: "Setting default kubectl context"
+
+    - name: Use Docker-Desktop Context
+      shell: "kubectl config use-context docker-desktop"
+
+    - debug:
+        msg: "Setup Complete"

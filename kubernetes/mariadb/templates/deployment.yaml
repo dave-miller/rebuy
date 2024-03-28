@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.service.expose: {{ .Chart.Name }}
+  creationTimestamp: null
+  labels:
+    io.kompose.service: {{ .Chart.Name }}
+  name: {{ .Chart.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: {{ .Chart.Name }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.image-pull-policy: IfNotPresent
+        kompose.service.expose: {{ .Chart.Name }}
+      creationTimestamp: null
+      labels:
+        io.kompose.service: {{ .Chart.Name }}
+    spec:
+      containers:
+        - env:
+            - name: MYSQL_DATABASE
+              value: {{ .Values.envValues.MYSQL_DATABASE | quote }}
+            - name: MYSQL_PASSWORD
+              value: {{ .Values.envValues.MYSQL_PASSWORD | quote }}
+            - name: MYSQL_ROOT_PASSWORD
+              value: {{ .Values.envValues.MYSQL_ROOT_PASSWORD | quote }}
+            - name: MARIADB_ROOT_PASSWORD
+              value: {{ .Values.envValues.MYSQL_ROOT_PASSWORD | quote }}
+            - name: MYSQL_USER
+              value: {{ .Values.envValues.MYSQL_USER | quote }}
+          image: mariadb-dev
+          imagePullPolicy: IfNotPresent
+          name: mariadb
+          ports:
+            - containerPort: {{ .Values.envValues.MYSQL_PORT }}
+          readinessProbe:
+            exec:
+              command:
+                - mysql
+                - -u
+                - {{ .Values.envValues.MYSQL_USER }}
+                - -p{{ .Values.envValues.MYSQL_PASSWORD }}
+            initialDelaySeconds: 10
+            failureThreshold: 3
+            periodSeconds: 15
+            timeoutSeconds: 10
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 200m
+              memory: 200Mi
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: mariadb-hostpath0
+      hostname: mariadb
+      restartPolicy: Always
+      volumes:
+        - hostPath:
+            path: '/private/var/www/rebuy/data/mariadb'
+          name: mariadb-hostpath0
+status: {}
